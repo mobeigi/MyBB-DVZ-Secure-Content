@@ -142,6 +142,13 @@ insecure=Insecure images only (HTTP)
 none=Don\'t forward images',
             'value'       => 'all',
         ],
+        [
+            'name'        => 'dvz_sc_domain_whitelist',
+            'title'       => 'Domain Whitelist',
+            'description' => 'Comma separated list of domains that images will be processed through.',
+            'optionscode' => 'text',
+            'value'       => 'i.imgur.com',
+        ],
     ];
 
     $i = 1;
@@ -457,6 +464,7 @@ class dvz_sc
             'dvz_sc_proxy_url_encoding',
             'dvz_sc_proxy_images',
             'dvz_sc_proxy_avatars',
+            'dvz_sc_domain_whitelist',
         ];
 
         return array_merge($peekers, [
@@ -689,7 +697,25 @@ class dvz_sc
         global $mybb;
 
         if (mb_strpos($url, self::settings('proxy_url')) !== 0) {
-
+            
+            $parsedUrl = parse_url($url);
+          
+            if ($parsedUrl) {
+                $urlHost = $parsedUrl['host'];
+                $domainWhitelist = explode(',', self::settings('domain_whitelist'));
+                $domainMatched = false;
+                
+                foreach ($domainWhitelist as &$domain) {
+                    if (fnmatch($domain, $urlHost)) {
+                        $domainMatched = true;
+                        break;
+                    }
+                }
+                
+                if (!$domainMatched)
+                    return '';
+            }
+            
             $passedUrl = $url;
 
             switch (self::settings('proxy_url_protocol')) {
@@ -744,7 +770,7 @@ class dvz_sc
             $proxyUrl = str_replace('{PROXY_URL}', self::settings('proxy_url'), $proxyUrl);
             $proxyUrl = str_replace('{URL}', $passedUrl, $proxyUrl);
             $proxyUrl = str_replace('{DIGEST}', $digest, $proxyUrl);
-
+            
         } else {
             $proxyUrl = $url;
         }
